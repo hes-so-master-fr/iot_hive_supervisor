@@ -5,6 +5,13 @@ import ubinascii
 import machine
 import pycom
 
+
+#import for fetching data from sensors
+from pycoproc_1 import Pycoproc
+from LIS2HH12 import LIS2HH12
+from SI7006A20 import SI7006A20
+from LTR329ALS01 import LTR329ALS01
+from MPL3115A2 import MPL3115A2,ALTITUDE,PRESSURE
 #from pycoproc import Pycoproc
 
 # create an OTAA authentication parameters, change them to the provided credentials
@@ -13,6 +20,7 @@ app_key = ubinascii.unhexlify('0C6A1E3E1857D8855FBA2CF04492AC6A')
 #uncomment to use LoRaWAN application provided dev_eui
 dev_eui = ubinascii.unhexlify('70B3D57ED0056E96')
 
+#-------------------------------------------------------------- network mgmt -------------------------------------------------------------------
 
 # connect to lora
 def connect_lora(dev_eui, app_eui, app_key):
@@ -64,9 +72,25 @@ def receive_data():
         print(data)
     return data
 
+##----------------------------------------------------------------------------- sensor fetching ---------------------------------------------
 
+def get_temp(py):
+    si = SI7006A20(py)
+    print("Temperature: " + str(si.temperature())+ " deg C and Relative Humidity: " + str(si.humidity()) + " %RH")
+    print("Dew point: "+ str(si.dew_point()) + " deg C")
+    t_ambient = 24.4
+    print("Humidity Ambient for " + str(t_ambient) + " deg C is " + str(si.humid_ambient(t_ambient)) + "%RH")
+
+    return str(si.temperature())
+
+##------------------------------------------------------------------------------- exec -------------------------------------------------------
 
 lora = connect_lora(dev_eui, app_eui, app_key)
 sock = open_socket()
-data = byte([0x01, 0x02, 0x03])
+data = bytes([0x01, 0x02, 0x03])
 send_data(sock, data)
+
+
+py = Pycoproc(Pycoproc.PYSENSE)
+
+get_temp(py)
