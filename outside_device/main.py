@@ -1,3 +1,25 @@
+'''
+ Copyright (c) 2021 University of Applied Sciences Western Switzerland
+ Permission is hereby granted, free of charge, to any person obtaining a copy
+ of this software and associated documentation files (the "Software"), to deal
+ in the Software without restriction, including without limitation the rights
+ to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ copies of the Software, and to permit persons to whom the Software is
+ furnished to do so, subject to the following conditions:
+ The above copyright notice and this permission notice shall be included in all
+ copies or substantial portions of the Software.
+ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ SOFTWARE.
+ Project: HES-SO Master / IoT
+ Purpose:
+ Author:  Antoine Delabays
+ Date:    November 2022
+'''
 from network import LoRa
 import socket
 import time
@@ -16,9 +38,11 @@ from MPL3115A2 import MPL3115A2,ALTITUDE,PRESSURE
 
 # create an OTAA authentication parameters, change them to the provided credentials
 app_eui = ubinascii.unhexlify('70B3D54997A0DDE4')
-app_key = ubinascii.unhexlify('0C6A1E3E1857D8855FBA2CF04492AC6A')
+app_key = ubinascii.unhexlify('9E2923F15AA475FBEEA427ECFCDE0CE8')
 #uncomment to use LoRaWAN application provided dev_eui
 dev_eui = ubinascii.unhexlify('70B3D57ED0056E96')
+#define where the devise is
+satus = 0x01
 
 #-------------------------------------------------------------- network mgmt -------------------------------------------------------------------
 
@@ -44,16 +68,34 @@ class Dataload:
         self.alt = alt
 
     def serialize_data(self):
-        self.serialized = bytes([self.temp,self.hum, self.press,self.light,self.alt])
-        #self.serialized = bytes([0x01])
+        ctrl_bit = 1
+        temp = int (self.temp * 100)
+        hum = int (self.hum * 100)
+        press = int(self.press)
+        blue = self.light[0]
+        red = self.light[1]
+        data = ctrl_bit.to_bytes(4,'big') + temp.to_bytes(4,'big') + press.to_bytes(4,'big') + blue.to_bytes(4,'big') + red.to_bytes(4,'big')
+        self.serialized = bytes(data)
 
     def send(self, sock):
-        #self.serialize()
+        self.serialize_data()
         send_data(sock, self.serialized)
 
 # connect to lora
 def connect_lora(dev_eui, app_eui, app_key):
     lora = LoRa(mode=LoRa.LORAWAN, region=LoRa.EU868)
+    # single band gateway
+    # remove all the default channels for EU868
+    for i in range(3, 16):
+        lora.remove_channel(i)
+
+    # set the 3 default channels to the same frequency (must be before sending the join request)
+    lora.add_channel(0, frequency=868100000, dr_min=0, dr_max=5)
+    lora.add_channel(1, frequency=868100000, dr_min=0, dr_max=5)
+    lora.add_channel(2, frequency=868100000, dr_min=0, dr_max=5)
+
+    # normal
+
     lora.join(activation=LoRa.OTAA, auth=(dev_eui, app_eui, app_key), timeout=0)
 
     # wait until the module has joined the network
