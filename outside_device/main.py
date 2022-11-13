@@ -60,22 +60,30 @@ class Dataload:
     def update(self, py):
         si = get_temp_hum(py)
         self.temp = si.temperature()
+
         self.hum = si.humidity()
         lt = get_light(py)
         self.light = lt.light()
-        press, alt = get_pressure_alt(py)
+        press = get_pressure_alt(py)
         self.press = press
-        self.alt = alt
+
+
 
     def serialize_data(self):
         ctrl_bit = 1
         temp = int (self.temp * 100)
         hum = int (self.hum * 100)
-        press = int(self.press)
+        press = int (self.press)
         blue = self.light[0]
         red = self.light[1]
-        data = ctrl_bit.to_bytes(4,'big') + temp.to_bytes(4,'big') + press.to_bytes(4,'big') + blue.to_bytes(4,'big') + red.to_bytes(4,'big')
+        print(temp)
+        print(press)
+        print(hum)
+        print(blue)
+        print(red)
+        data = ctrl_bit.to_bytes(1,'big') + temp.to_bytes(4,'big') + press.to_bytes(4,'big') + hum.to_bytes(4, 'big') + blue.to_bytes(4,'big') + red.to_bytes(4,'big')
         self.serialized = bytes(data)
+        print(self.serialized)
 
     def send(self, sock):
         self.serialize_data()
@@ -84,18 +92,6 @@ class Dataload:
 # connect to lora
 def connect_lora(dev_eui, app_eui, app_key):
     lora = LoRa(mode=LoRa.LORAWAN, region=LoRa.EU868)
-    # single band gateway
-    # remove all the default channels for EU868
-    for i in range(3, 16):
-        lora.remove_channel(i)
-
-    # set the 3 default channels to the same frequency (must be before sending the join request)
-    lora.add_channel(0, frequency=868100000, dr_min=0, dr_max=5)
-    lora.add_channel(1, frequency=868100000, dr_min=0, dr_max=5)
-    lora.add_channel(2, frequency=868100000, dr_min=0, dr_max=5)
-
-    # normal
-
     lora.join(activation=LoRa.OTAA, auth=(dev_eui, app_eui, app_key), timeout=0)
 
     # wait until the module has joined the network
@@ -170,7 +166,7 @@ def get_pressure_alt(py):
     alt = mp.altitude()
     pressure = mpp.pressure()
 
-    return alt, pressure
+    return pressure
 
 ##------------------------------------------------------------------------------- exec -------------------------------------------------------
 
@@ -183,5 +179,4 @@ py = Pycoproc(Pycoproc.PYSENSE)
 
 #while True:
 dt.update(py)
-dt.serialize_data()
 dt.send(sock)
