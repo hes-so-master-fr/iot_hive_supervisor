@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 '''
- Copyright (c) 2021 University of Applied Sciences Western Switzerland / Fribourg
+ Copyright (c) 2022 University of Applied Sciences Western Switzerland / MSE
 
  Permission is hereby granted, free of charge, to any person obtaining a copy
  of this software and associated documentation files (the "Software"), to deal
@@ -38,24 +38,31 @@ import pycom
 from machine import I2C
 import bme280_float as bme280
 from array import array
+import pysense_sensors
 
 pycom.heartbeat(False)
 
-# Initialise LoRa in LORAWAN mode.
-lora = LoRa(mode=LoRa.LORAWAN, region=LoRa.EU868)
-app_eui = ubinascii.unhexlify('70B3D5499F79F82C')
-app_key = ubinascii.unhexlify('B3963FDB9001CDB49EB5C41408917999')
-dev_eui = ubinascii.unhexlify('70B3D57ED0056E95')
-
-# Initialise I2C
-i2c = I2C(0, pins=('P23','P22')) 
-bme = bme280.BME280(i2c=i2c)
-
 # Config
 control = 0
+interval = 300
+is_pysense = True
+
+# Initialise LoRa in LORAWAN mode.
+lora = LoRa(mode=LoRa.LORAWAN, region=LoRa.EU868)
+# app_eui = ubinascii.unhexlify('70B3D5499F79F82C')
+app_eui = LoRa().mac()
+app_key = ubinascii.unhexlify('B3963FDB9001CDB49EB5C41408917999')
+# dev_eui = ubinascii.unhexlify('70B3D57ED0056E95')
+dev_eui = LoRa().mac()
+
+# Initialise I2C
+bme = None
+if not is_pysense:
+    i2c = I2C(0, pins=('P23','P22')) 
+    bme = bme280.BME280(i2c=i2c)
 
 def measure_data():
-    data = bme.read_compensated_data()
+    data = pysense_sensors.pysense_read_data() if is_pysense else bme.read_compensated_data()
     print("({:.2f}C, {:.2f}hPa, {:.2f}%)".format(data[0],data[1]/100,data[2]))
     temp = int(data[0]*100)
     pressure = int(data[1])
@@ -98,8 +105,14 @@ def send_mesure(control_byte: int, data: list[int]):
         print(e)
 
 def main():
-    data = measure_data()
-    send_mesure(control, data)
+    while(True):
+        pycom.rgbled(0xFF0000)
+        data = measure_data()
+        pycom.rgbled(0x0000FF)
+        send_mesure(control, data)
+        pycom.rgbled(0x000000)
+        print("Wait 300 secondes")
+        time.sleep(interval)
 
 if __name__ == "__main__":
     main()
