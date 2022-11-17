@@ -175,7 +175,7 @@ sock = open_socket()
 dt = Dataload("payload", 0)
 py = Pycoproc(Pycoproc.PYSENSE)
 
-wait = 5*30
+wait = 5*60
 
 while True:
     dt.update(py)
