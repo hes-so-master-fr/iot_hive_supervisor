@@ -172,11 +172,12 @@ def get_pressure_alt(py):
 
 lora = connect_lora(dev_eui, app_eui, app_key)
 sock = open_socket()
-
-
 dt = Dataload("payload", 0)
 py = Pycoproc(Pycoproc.PYSENSE)
 
-#while True:
-dt.update(py)
-dt.send(sock)
+wait = 5*60
+
+while True:
+    dt.update(py)
+    dt.send(sock)
+    time.sleep(wait)
