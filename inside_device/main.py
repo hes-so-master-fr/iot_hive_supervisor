@@ -93,26 +93,41 @@ def send_to_lora(socket, data_bytes):
 def receive_data(socket):
     data = socket.recv(64)
     print(data)
+    if data:
+        return int.from_bytes(data, "big") 
+    return None
     
 def send_mesure(control_byte: int, data: list[int]):
+    response = None
     try:
         lora_join()
         socket = create_socket()
         send_to_lora(socket,control_byte.to_bytes(1, 'big') + data[0].to_bytes(4, 'big') + data[1].to_bytes(4, 'big')+data[2].to_bytes(4, 'big'))
-        receive_data(socket)
+        response = receive_data(socket)
         
     except Exception as e:
         print(e)
-
+    return response
 def main():
     while(True):
         pycom.rgbled(0xFF0000)
         data = measure_data()
         pycom.rgbled(0x0000FF)
-        send_mesure(control, data)
-        pycom.rgbled(0x000000)
-        print("Wait 300 secondes")
-        time.sleep(interval)
+        response = send_mesure(control, data)
+        if response is not None:
+            if response is 0:
+                pycom.rgbled(0x00FF00)
+                print("Close Door")
+            else:
+                pycom.rgbled(0xF000F0)
+                print("Open Door")
+            time.sleep(10)
+            pycom.rgbled(0x000000)
+            time.sleep(interval-10)
+        else:
+            pycom.rgbled(0x000000)
+            print("Wait 300 secondes")
+            time.sleep(interval)
 
 if __name__ == "__main__":
     main()
